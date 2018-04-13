@@ -1,4 +1,4 @@
-#Set Functions
+ #Set Functions
 #region Helper functions (General use functions)
 <#
 .SYNOPSIS
@@ -55,7 +55,7 @@ function Load-PFXCert
         [ValidateScript({Test-Path -Path $_})]
         [Parameter(Mandatory=$true)][string]$CertPath
     )
-    $Collection = [System.Security.Cryptography.X509Certificates.X509Certificate2Collection]::new() #Because I could not get the private key utilizing "cert:\etc\etc"
+    $Collection = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2Collection #Because I could not get the private key utilizing "cert:\etc\etc"
     $Collection.Import($CertPath, $Password, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet)
     return $Collection[0]
 }
@@ -229,9 +229,7 @@ function Get-AdobeAuthToken
 {
     Param
     (
-        [ValidateScript({$_.Token -ne $null})]
         [Parameter(Mandatory=$true)]$ClientInformation,
-        [ValidateScript({$_.PrivateKey -ne $null})] 
         [Parameter(Mandatory=$true)]$SignatureCert, 
         [string]$AuthTokenURI="https://ims-na1.adobelogin.com/ims/exchange/jwt/", 
         [int]$ExpirationInHours=1
@@ -391,7 +389,7 @@ function Get-AdobeGroups
     return $Results
 }
 
-
+　
 <#
 .SYNOPSIS
     Grab all members of the specified group
@@ -506,7 +504,7 @@ function Get-AdobeGroupAdmins
     return $Results
 }
 
-
+　
 <#
 .SYNOPSIS
     Creates a "CreateUserRequest" object. This object can then be converted to JSON and sent to create a new user
@@ -540,18 +538,20 @@ function Create-CreateUserRequest
         [Parameter(Mandatory=$true)][string]$FirstName, 
         [Parameter(Mandatory=$true)][string]$LastName, 
         [Parameter(Mandatory=$true)][string]$Email, 
+        [ValidateSet('Enterprise','Federated')]
+        [Parameter(Mandatory=$true)][string]$Type, 
         [string]$Country="US", 
         $AdditionalActions=@()
     )
 
-    #Parameters to create a new enterprise ID
-    $EnterpriseIDParameters = New-Object -TypeName PSObject -Property @{email=$Email;country=$Country;firstname=$FirstName;lastname=$LastName}
+    #Parameters to create a new Type ID
+    $TypeIDParameters = New-Object -TypeName PSObject -Property @{email=$Email;country=$Country;firstname=$FirstName;lastname=$LastName}
 
-    #Enterprise ID creation action
-    $EnterpriseIDAction = New-Object -TypeName PSObject -Property @{createEnterpriseID=$EnterpriseIDParameters}
+    #Type ID creation action
+    $TypeIDAction = New-Object -TypeName PSObject -Property @{$("create"+$Type+"ID")=$TypeIDParameters}
 
     #Add any additional actions
-    $AdditionalActions = @()+ $EnterpriseIDAction + $AdditionalActions
+    $AdditionalActions = @()+ $TypeIDAction + $AdditionalActions
 
     #Return the new request
     return (New-Object -TypeName PSObject -Property @{user=$Email;do=@()+$AdditionalActions})
@@ -692,8 +692,8 @@ function Create-AddToGroupRequest
         [Parameter(Mandatory=$true)][string]$User, 
         [Parameter(Mandatory=$true)]$Groups
     )
-    $GroupAddAction = Create-GroupUserAddAction -GroupNames $Groups
-    return return (New-Object -TypeName PSObject -Property @{user=$User;do=@()+$GroupAddAction})
+    $GroupAddAction = Create-GroupUserAddAction -Groups $Groups
+    return (New-Object -TypeName PSObject -Property @{user=$User;do=@()+$GroupAddAction})
 }
 
 <#
@@ -719,6 +719,45 @@ function Create-RemoveFromGroupRequest
     )
     $GroupRemoveAction = Create-GroupRemoveAction -GroupNames $Groups
     return return (New-Object -TypeName PSObject -Property @{user=$User;do=@()+$GroupRemoveAction})
+}
+
+<#
+.SYNOPSIS
+    Creates a "Add / Remove Product Configuration" request. This will need to be json'd and sent to adobe
+
+.PARAMETER User
+    A string containing the user's email address
+
+.PARAMETER ProductConfigurations
+    An array of product configurations that something should be added to
+
+.PARAMETER Action
+    A String defined as either add or remove that something should be done
+
+.NOTES
+    See https://www.adobe.io/apis/cloudplatform/usermanagement/docs/samples/samplemultiaction.html
+    This should be posted to https://usermanagement.adobe.io/v2/usermanagement/action/{myOrgID}
+  
+.EXAMPLE
+    $AddProductRequest = Create-ProductConfigurationRequest -User "John.Doe@domain.com" -ProductConfigurations "My Product Configuration" -Action add
+    $AddProductResult = Send-UserManagementRequest -ClientInformation $ClientInformation -Requests $AddProductRequest
+  
+.EXAMPLE
+    $RemoveProductRequest = Create-ProductConfigurationRequest -User "John.Doe@domain.com" -ProductConfigurations "My Product Configuration" -Action remove
+    $RemoveProductResult = Send-UserManagementRequest -ClientInformation $ClientInformation -Requests $AddProductRequest
+#>
+function Create-ProductConfigurationRequest
+{
+    Param
+    (
+        [Parameter(Mandatory=$true)][string]$User, 
+        [Parameter(Mandatory=$true)]$ProductConfigurations,
+        [ValidateSet('add','remove')]
+        [Parameter(Mandatory=$true)][string]$Action
+    )
+    $Params = New-Object -TypeName PSObject -Property @{productConfiguration=@()+$ProductConfigurations}
+    $ProductConfigurationsAction =  (New-Object -TypeName PSObject -Property @{$("$Action")=$Params})
+    return (New-Object -TypeName PSObject -Property @{user=$User;do=@()+$ProductConfigurationsAction})
 }
 
 <#
@@ -932,4 +971,4 @@ $Request = Create-CreateUserRequest -FirstName "John" -LastName "Doe" -Email "Jo
 
 #Send the generated request to adobe
 Send-UserManagementRequest -ClientInformation $ClientInformation -Requests $Request
-#----------------------------------------------------#>
+#----------------------------------------------------#> 
