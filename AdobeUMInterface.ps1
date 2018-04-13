@@ -55,7 +55,7 @@ function Load-PFXCert
         [ValidateScript({Test-Path -Path $_})]
         [Parameter(Mandatory=$true)][string]$CertPath
     )
-    $Collection = [System.Security.Cryptography.X509Certificates.X509Certificate2Collection]::new() #Because I could not get the private key utilizing "cert:\etc\etc"
+    $Collection = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2Collection #Because I could not get the private key utilizing "cert:\etc\etc"
     $Collection.Import($CertPath, $Password, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet)
     return $Collection[0]
 }
