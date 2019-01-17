@@ -422,8 +422,9 @@ function Get-AdobeGroupMembers
     )
     #See https://www.adobe.io/apis/cloudplatform/usermanagement/docs/samples/samplequery.html
     $Results = @()
-
+    
     $URIPrefix = "$UM_SERVER$($ClientInformation.OrgID)/user-groups/$GroupID/users?page="
+    
     $Page =0
 
     #Request headers
@@ -434,7 +435,7 @@ function Get-AdobeGroupMembers
 
     while($true)
     {
-        $QueryResponse = Invoke-RestMethod -Method Get -Uri ($URIPrefix) -Header $Headers
+        $QueryResponse = Invoke-RestMethod -Method Get -Uri ($URIPrefix+$Page.ToString()) -Header $Headers
         if ($Results -ne $null -and $Results.id.Contains($QueryResponse[0].id))
         {
             break; #Why you ask? Because Adobe will just return any results they can anyway! If you have 1 page of results, and you ask for page 4, do they error? Noooo. Do they say last page? Nooo!
